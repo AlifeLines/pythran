@@ -29,7 +29,7 @@ The generated native ``.so`` module can then be used with the Python interpreter
 Pythran version can be dumped through ``--version``::
 
   $> pythran --version 2>&1
-  0.9.2
+  0.9.5
 
 The module-level ``__pythran__`` variable indicates that the module loaded has been pythranized::
 
@@ -53,6 +53,7 @@ That's some heavily templated code ;-) Pythran can then compile it for you to a 
 
 Pythran can also generate raw C++ code, using the ``-e`` switch::
 
+  $> printf 'msg = \"hello world\"\ndef foo(): print(msg)' > cli_foo.py
   $> pythran -e cli_foo.py -o cli_foo.hpp
   $> printf '#include \"cli_foo.hpp\"\nusing namespace __pythran_cli_foo ; int main() { foo()(); return 0 ; }' > cli_foo.cpp
   $> `pythran-config --compiler --cflags` -std=c++11 cli_foo.cpp -o cli_foo

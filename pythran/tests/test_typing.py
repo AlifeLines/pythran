@@ -16,7 +16,7 @@ class TestTyping(TestEnv):
         code = 'def module_bad_attribute(): import random as m; return m.real'
 
         with self.assertRaises(pythran.syntax.PythranSyntaxError):
-            pythran.compile_pythrancode("dumbo", code)
+            pythran.compile_pythrancode("dumbo", code, pyonly=True)
 
     def test_list_of_set(self):
         code = '''
@@ -176,6 +176,16 @@ def functional_variant_assign1(n):
         f = lambda y: x + "er"
     return f("re")'''
         self.run_test(code, 1, functional_variant_assign1=[int])
+
+    def test_functional_variant_assign2(self):
+        code='''
+def functional_variant_assign2(n):
+    if n > 3:
+        f = lambda x: (1, x * 1.j)
+    else:
+        f = lambda x: (x * 1.j, 1)
+    return sum(f(3))'''
+        self.run_test(code, 1, functional_variant_assign2=[int])
 
     def test_functional_variant_container0(self):
         code='''
@@ -518,3 +528,24 @@ def recursive_interprocedural_typing1(c):
                 b(foo, t)
                 return t'''
         return self.run_test(code, 3, higher_order0=[int])
+
+    def test_rvalue_type_update_list(self):
+        code = '''
+          def rvalue_type_update_list(x):
+              def foo(x): x.append(1.5); return x
+              return foo([x])'''
+        return self.run_test(code, 3, rvalue_type_update_list=[int])
+
+    def test_rvalue_type_update_set(self):
+        code = '''
+          def rvalue_type_update_set(x):
+              def foo(x): x.add(1.5); return x
+              return foo({x})'''
+        return self.run_test(code, 3, rvalue_type_update_set=[int])
+
+    def test_rvalue_type_update_dict(self):
+        code = '''
+          def rvalue_type_update_dict(x):
+              def foo(x): x[1.5] = 1.5; return x
+              return foo({x:x})'''
+        return self.run_test(code, 3, rvalue_type_update_dict=[int])

@@ -5,6 +5,8 @@ from pythran.passmanager import Transformation
 from pythran.tables import MODULES
 from pythran.conversion import mangle
 
+import pythran.metadata as metadata
+
 import gast as ast
 
 
@@ -38,10 +40,12 @@ class _NestedFunctionRemover(ast.NodeTransformer):
         self.identifiers.add(new_name)
 
         ii = self.gather(ImportedIds, node)
-        binded_args = [ast.Name(iin, ast.Load(), None) for iin in sorted(ii)]
-        node.args.args = ([ast.Name(iin, ast.Param(), None)
+        binded_args = [ast.Name(iin, ast.Load(), None, None) for iin in sorted(ii)]
+        node.args.args = ([ast.Name(iin, ast.Param(), None, None)
                            for iin in sorted(ii)] +
                           node.args.args)
+
+        metadata.add(node, metadata.Local())
 
         class Renamer(ast.NodeTransformer):
             def visit_Call(self, node):
@@ -50,7 +54,7 @@ class _NestedFunctionRemover(ast.NodeTransformer):
                         node.func.id == former_name):
                     node.func.id = new_name
                     node.args = (
-                        [ast.Name(iin, ast.Load(), None)
+                        [ast.Name(iin, ast.Load(), None, None)
                          for iin in sorted(ii)] +
                         node.args
                         )
@@ -59,13 +63,13 @@ class _NestedFunctionRemover(ast.NodeTransformer):
 
         node.name = new_name
         self.global_declarations[node.name] = node
-        proxy_call = ast.Name(new_name, ast.Load(), None)
+        proxy_call = ast.Name(new_name, ast.Load(), None, None)
 
         new_node = ast.Assign(
-            [ast.Name(former_name, ast.Store(), None)],
+            [ast.Name(former_name, ast.Store(), None, None)],
             ast.Call(
                 ast.Attribute(
-                    ast.Name(mangle('functools'), ast.Load(), None),
+                    ast.Name(mangle('functools'), ast.Load(), None, None),
                     "partial",
                     ast.Load()
                     ),

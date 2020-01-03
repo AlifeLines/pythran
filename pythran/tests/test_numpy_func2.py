@@ -312,6 +312,9 @@ def test_copy0(x):
             numpy.array([[1, 2], [3, 4]]),
             np_concatenate2=[NDArray[int,:,:]])
 
+    def test_concatenate3(self):
+        self.run_test("def np_concatenate3(a): from numpy import array, concatenate ; return concatenate([[1],a + a])", numpy.array([1, 2]), np_concatenate3=[NDArray[int,:]])
+
     def test_hstack0(self):
         self.run_test("def np_hstack0(a,b): import numpy as np; return np.hstack((a,b))",
                       numpy.array((1,2,3)),
@@ -753,6 +756,15 @@ def test_copy0(x):
     def test_arange14(self):
         self.run_test("def np_arange14_(a):\n from numpy import arange, float32\n return 50000 * arange(a, 25, dtype=float32)", 0, np_arange14_=[int])
 
+    def test_arange15(self):
+        self.run_test("def np_arange15_(a):\n from numpy import arange\n return arange(-4 * a, 1, 4)", 1, np_arange15_=[int])
+
+    def test_arange16(self):
+        self.run_test("def np_arange16_(a):\n from numpy import arange\n return arange(4 * a, -1, -4)", 1, np_arange16_=[int])
+
+    def test_arange17(self):
+        self.run_test("def np_arange17_(a):\n from numpy import arange\n return arange(4 * a, -1, -4)[:,None]", 1, np_arange17_=[int])
+
     def test_linspace(self):
         self.run_test("def np_linspace_(a):\n from numpy import linspace\n return linspace(a,4,32)", 1, np_linspace_=[int])
 
@@ -764,6 +776,9 @@ def test_copy0(x):
 
     def test_linspace3(self):
         self.run_test("def np_linspace3_(a):\n from numpy import linspace\n return linspace(1,a)", 4, np_linspace3_=[int])
+
+    def test_linspace4(self):
+        self.run_test("def np_linspace4_(a):\n from numpy import linspace\n return linspace(1,a,dtype=int)", 4, np_linspace4_=[int])
 
     def test_sin(self):
         self.run_test("def np_sin_(a):\n from numpy import sin\n return sin(a)", numpy.linspace(0,6), np_sin_=[NDArray[float,:]])

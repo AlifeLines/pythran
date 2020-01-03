@@ -13,7 +13,7 @@ from pythran.passmanager import ModuleAnalysis
 from pythran.tables import operator_to_lambda, MODULES
 from pythran.types.conversion import pytype_to_ctype
 from pythran.types.reorder import Reorder
-from pythran.utils import attr_to_path
+from pythran.utils import attr_to_path, cxxid, isnum
 
 from collections import defaultdict
 from functools import partial
@@ -170,25 +170,28 @@ class Types(ModuleAnalysis):
         try:
             if register:    # this comes from an assignment,
                             # so we must check where the value is assigned
-                node_id, depth = self.node_to_id(node)
-                if depth > 0:
-                    node = ast.Name(node_id, ast.Load(), None)
-                    former_unary_op = unary_op
+                try:
+                    node_id, depth = self.node_to_id(node)
+                    if depth > 0:
+                        node = ast.Name(node_id, ast.Load(), None, None)
+                        former_unary_op = unary_op
 
-                    # update the type to reflect container nesting
-                    def unary_op(x):
-                        return reduce(lambda t, n:
-                                      self.builder.ContainerType(t),
-                                      range(depth), former_unary_op(x))
+                        # update the type to reflect container nesting
+                        def unary_op(x):
+                            return reduce(lambda t, n:
+                                          self.builder.ContainerType(t),
+                                          range(depth), former_unary_op(x))
 
-                    # patch the op, as we no longer apply op, but infer content
-                    def op(*types):
-                        if len(types) == 1:
-                            return types[0]
-                        else:
-                            return self.builder.CombinedTypes(*types)
+                        # patch the op, as we no longer apply op, but infer content
+                        def op(*types):
+                            if len(types) == 1:
+                                return types[0]
+                            else:
+                                return self.builder.CombinedTypes(*types)
 
-                self.name_to_nodes[node_id].append(node)
+                    self.name_to_nodes[node_id].append(node)
+                except UnboundableRValue:
+                    pass
 
             # only perform inter procedural combination upon stage 0
             if register and self.isargument(node) and self.stage == 0:
@@ -207,7 +210,7 @@ class Types(ModuleAnalysis):
                         ''' capture args for translator generation'''
                         def interprocedural_type_translator(s, n):
                             translated_othernode = ast.Name(
-                                '__fake__', ast.Load(), None)
+                                '__fake__', ast.Load(), None, None)
                             s.result[translated_othernode] = (
                                 parametric_type.instanciate(
                                     s.current,
@@ -242,7 +245,10 @@ class Types(ModuleAnalysis):
                 if node not in self.result or self.result[node] is UnknownType:
                     self.result[node] = new_type
                 else:
+                    if isinstance(self.result[node], tuple):
+                        raise UnboundableRValue
                     self.result[node] = op(self.result[node], new_type)
+
         except UnboundableRValue:
             pass
 
@@ -406,7 +412,7 @@ class Types(ModuleAnalysis):
                 # by construction of the bind construct
                 assert len(self.strict_aliases[a0]) == 1
                 bounded_function = next(iter(self.strict_aliases[a0]))
-                fake_name = ast.Name(bounded_name, ast.Load(), None)
+                fake_name = ast.Name(bounded_name, ast.Load(), None, None)
                 fake_node = ast.Call(fake_name, alias.args[1:] + node.args,
                                      [])
                 self.combiners[bounded_function].combiner(self, fake_node)
@@ -438,7 +444,7 @@ class Types(ModuleAnalysis):
         if (isinstance(func, ast.Attribute) and func.attr == 'getattr'):
             def F(_):
                 return self.builder.GetAttr(self.result[node.args[0]],
-                                            node.args[1].s)
+                                            node.args[1].value)
         # default behavior
         else:
             def F(f):
@@ -447,23 +453,13 @@ class Types(ModuleAnalysis):
         # op is used to drop previous value there
         self.combine(node, func, op=lambda x, y: y, unary_op=F)
 
-    def visit_Num(self, node):
-        """
-        Set type for number.
-
-        It could be int, long or float so we use the default python to pythonic
-        type converter.
-        """
-        ty = type(node.n)
+    def visit_Constant(self, node):
+        """ Set the pythonic constant type. """
+        ty = type(node.value)
         sty = pytype_to_ctype(ty)
         if node in self.immediates:
-            sty = "std::integral_constant<%s, %s>" % (sty, node.n)
-
+            sty = "std::integral_constant<%s, %s>" % (sty, node.value)
         self.result[node] = self.builder.NamedType(sty)
-
-    def visit_Str(self, node):
-        """ Set the pythonic string type. """
-        self.result[node] = self.builder.NamedType(pytype_to_ctype(str))
 
     def visit_Attribute(self, node):
         """ Compute typing for an attribute node. """
@@ -473,7 +469,7 @@ class Types(ModuleAnalysis):
             typename = pytype_to_ctype(obj.signature)
             self.result[node] = self.builder.NamedType(typename)
         else:
-            self.result[node] = self.builder.DeclType('::'.join(path) + '{}')
+            self.result[node] = self.builder.DeclType('::'.join(map(cxxid,path)) + '{}')
 
     def visit_Slice(self, node):
         """
@@ -482,8 +478,7 @@ class Types(ModuleAnalysis):
         Also visit subnodes as they may contains relevant typing information.
         """
         self.generic_visit(node)
-        if node.step is None or (isinstance(node.step, ast.Num) and
-                                 node.step.n == 1):
+        if node.step is None or (isnum(node.step) and node.step.value == 1):
             self.result[node] = self.builder.NamedType(
                 'pythonic::types::contiguous_slice')
         else:
@@ -502,13 +497,12 @@ class Types(ModuleAnalysis):
                 dim_types = tuple(self.result[d] for d in node.slice.dims)
                 return self.builder.ExpressionType(et, (t,) + dim_types)
         elif (isinstance(node.slice, ast.Index) and
-              isinstance(node.slice.value, ast.Num) and
-              node.slice.value.n >= 0):
+              isnum(node.slice.value) and node.slice.value.value >= 0):
             # type of a[2] is the type of an elements of a
             # this special case is to make type inference easier
             # for the back end compiler
             def f(t):
-                return self.builder.ElementType(node.slice.value.n, t)
+                return self.builder.ElementType(node.slice.value.value, t)
         else:
             # type of a[i] is the return type of the matching function
             self.visit(node.slice)

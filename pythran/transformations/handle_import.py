@@ -1,6 +1,6 @@
 """HandleImport transformation takes care of importing user-defined modules."""
 from pythran.passmanager import Transformation
-from pythran.tables import cxx_keywords, MODULES, pythran_ward
+from pythran.tables import MODULES, pythran_ward
 from pythran.syntax import PythranSyntaxError
 
 import gast as ast
@@ -29,16 +29,13 @@ def demangle(name):
 
 def is_builtin_function(func_name):
     """Test if a function is a builtin (like len(), map(), ...)."""
-    return (func_name in MODULES["__builtin__"] or
-            (func_name in cxx_keywords and
-             func_name + "_" in MODULES["__builtin__"]))
+    return func_name in MODULES["__builtin__"]
 
 
 def is_builtin_module(module_name):
     """Test if a module is a builtin module (numpy, math, ...)."""
     module_name = module_name.split(".")[0]
-    return (module_name in MODULES or
-            (module_name in cxx_keywords and module_name + "_" in MODULES))
+    return module_name in MODULES
 
 
 def is_mangled_module(name):
@@ -204,7 +201,7 @@ class HandleImport(Transformation):
         while isinstance(root, ast.Attribute):
             root = root.value
             suffix = '$' + node.attr + suffix
-        return ast.Name(renaming + suffix[1:], node.ctx, None)
+        return ast.Name(renaming + suffix[1:], node.ctx, None, None)
 
     def import_module(self, module_name, module_level):
         self.imported.add(module_name)

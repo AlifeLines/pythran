@@ -39,11 +39,10 @@ Prerequisite
 
 Pythran depends on the following packages:
 
-- ply: http://www.dabeaz.com/ply/
-- networkx: https://networkx.github.io/
-- numpy: http://www.numpy.org/
+.. include:: ../requirements.txt
+    :literal:
 
-You also need a modern C++11 enabled compiler (e.g. g++>=4.9, clang>=3.5), that supports
+You also need a modern C++11 enabled compiler (e.g. g++>=5, clang>=3.5), that supports
 atomic operations (N3290) or variadic template (N2555).
 
 
@@ -54,7 +53,7 @@ First get the sources::
 
     $> git clone https://github.com/serge-sans-paille/pythran
 
-Install *cough* numpy manually::
+Install *cough* Numpy manually::
 
     $> pip install --user numpy
 
@@ -211,7 +210,7 @@ Constructed types are either tuples, introduced by parenthesis, like ``(int,
                   | argument_type [:,...,3]+ # this is a ndarray, some dimension fixed
                   | argument_type:argument_type dict    # this is a dictionary
 
-    basic_type = bool | byte | int | float | str | None
+    basic_type = bool | byte | int | float | str | None | slice
                | uint8 | uint16 | uint32 | uint64 | uintp
                | int8 | int16 | int32 | int64 | intp
                | float32 | float64 | float128
@@ -219,7 +218,7 @@ Constructed types are either tuples, introduced by parenthesis, like ``(int,
 
 .. note::
 
-    When using a 2D array, overlaods of the function involved are created to accept both C-style and Fortran-style arrays.
+    When using a 2D array, overloads of the function involved are created to accept both C-style and Fortran-style arrays.
     To avoid generating too many functions, one can force the memory layout using ``order(C)`` or ``order(F)`` after the
     array decalaration, as in ``int[:,:] order(C)``.
 
@@ -227,11 +226,27 @@ The same syntax can be used to export global variable (in read only mode)::
 
     #pythran export var_name
 
+
 In a similar manner to the Python import statement, it's possible to chain the export, as in::
 
     #pythran export var_name0, var_name1, function_name(argument_type0)
 
-If you want to specify multiple overloads, instead of listing them, you can use the ``or`` operator to list the alternatives, as in::
+Multiple overloads can be specified for the same Python function::
+
+    #pythran export function_name(argument_type0)
+    #pythran export function_name(argument_type1)
+
+In the case of function with default parameters, you can either omit the
+parameter, and in that case it uses the default one, or explicitly state it's
+argument type::
+
+    #pythran export function_name()
+    #pythran export function_name(argument_type0)
+    #pythran export function_name(argument_type0, argument_type1)
+    def function_name(a0=1, a1=True):
+       pass
+
+When specifying multiple overloads, instead of listing them, you can use the ``or`` operator to list the alternatives, as in::
 
     #pythran export function_name(type0 or type1, type2, type3 or type4)
 
@@ -370,7 +385,7 @@ produce native functions to be used by other Python extension, using the
 ``Capsule`` mechanism. To do so, just add the ``capsule`` keyword to the export
 line::
 
-    #pythran export capsule foo(double*, doule)
+    #pythran export capsule foo(double*, double)
 
 Note that pointer types are only supported within the context of a capsule, as
 they don't match any real Python type. **Any** Pythran type is valid as capsule
@@ -398,7 +413,7 @@ variables have greater precedence than configuration file.
 The careful reader might have noticed the ``-p`` flag from the command line. It
 makes it possible to define your own optimization sequence::
 
-    pythran -pConstantFodling -pmy_package.MyOptimization
+    pythran -pConstantFolding -pmy_package.MyOptimization
 
 runs the ``ConstantFolding`` optimization from ``pythran.optimizations``
 followed by a custom optimization found in the ``my_package`` package, loaded
@@ -436,7 +451,7 @@ back-end compiler. Be careful with the indentation. It has to be correct!
 
 Alternatively, one can run the great::
 
-    $> pythran -ppythran.analysis.ParallelMaps -e as.py
+    $> pythran -ppythran.analyses.ParallelMaps -e as.py
 
 which runs a code analyzer that displays extra information concerning parallel ``map`` found in the code.
 
@@ -471,6 +486,15 @@ You can change the default location of the pythran configuration file using the
 environment variable ``PYTHRANRC``::
 
     PYTHRANRC=/opt/company/pythran/config.pythranrc pythran arc_distance.py
+
+All the options in the ``.pythranrc`` file can be specified when running pythran by using the command line argument --config= .
+For example:
+
+    pythran --config=compiler.blas=pythran-openblas this_file.py
+
+would specify that pythran-openblas is the blas library to use. 
+
+Options specified using command-line arguments override the options found in the ``.pythranrc`` file
 
 
 ``[compiler]``
@@ -552,7 +576,7 @@ This one contains internal configuration settings. Play with it at your own risk
 
 :``complex_hook``:
 
-    Set this to ``True`` for faster and still numpy-compliant complex
+    Set this to ``True`` for faster and still Numpy-compliant complex
     multiplications. Not very portable, but generally works on Linux.
 
 ``[typing]``

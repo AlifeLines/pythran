@@ -1,4 +1,4 @@
-﻿Pythran
+Pythran
 #######
 
 http://pythran.readthedocs.io
@@ -14,7 +14,7 @@ interface, but (hopefully) faster.
 It is meant to efficiently compile **scientific programs**, and takes advantage
 of multi-cores and SIMD instruction units.
 
-Pythran supports Python **2.7** and also has a decent Python **3** support.
+Pythran supports Python **3** and Python **2.7**.
 
 Installation
 ------------
@@ -40,7 +40,7 @@ Using ``pip``
 
 2. Use ``easy_install`` or ``pip``::
 
-		$> pip install pythran
+        $> pip install pythran
 
 Using ``conda``
 ***************
@@ -74,12 +74,26 @@ Using any working `AUR helper <https://wiki.archlinux.org/index.php/AUR_helpers>
 
     $> aurman -S python-pythran
 
+
+Fedora
+======
+
+Using ``dnf``::
+
+    $> dnf install pythran
+
 Windows
 =======
 
-Windows support is on going and only targets Python 3.5+ with Visual Studio 2017.
+Windows support is on going and only targets Python 3.5+ with either Visual Studio 2017 or, better, clang-cl::
 
-    % pip install pythran
+    $> pip install pythran
+
+If you plan to use clang-cl, also add the following to ``%HOMEPATH%/.pythranrc``::
+
+    [compiler]
+    CC=clang-cl.exe
+    CXX=clang-cl.exe
 
 
 Other Platform
@@ -98,12 +112,12 @@ A simple pythran input could be ``dprod.py``::
     """
     #pythran export dprod(int list, int list)
     def dprod(l0,l1):
-    	"""WoW, generator expression, zip and sum."""
-	return sum(x * y for x, y in zip(l0, l1))
+        """WoW, generator expression, zip and sum."""
+        return sum(x * y for x, y in zip(l0, l1))
 
 To turn it into a native module, run::
 
-	$> pythran dprod.py
+    $> pythran dprod.py
 
 That will generate a native dprod.so that can be imported just like the former
 module::
@@ -117,20 +131,19 @@ Documentation
 The user documentation is available in the MANUAL file from the doc directory.
 
 The developer documentation is available in the DEVGUIDE file from the doc
-directory. The also is a TUTORIAL file for those who don't like reading
+directory. There is also a TUTORIAL file for those who don't like reading
 documentation.
-
-A todo list is maintained in the eponymous TODO file.
 
 The CLI documentation is available from the pythran help command::
 
-	$> pythran --help
+    $> pythran --help
 
 Some extra developer documentation is also available using pydoc. Beware, this
 is the computer science incarnation for the famous Where's Waldo? game::
 
-	$> pydoc pythran
-	$> pydoc pythran.typing
+    $> pydoc pythran
+    $> pydoc pythran.typing
+    $> pydoc -b  # in the browser
 
 
 Examples
@@ -179,4 +192,3 @@ License
 -------
 
 See LICENSE file.
-

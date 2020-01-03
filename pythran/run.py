@@ -37,6 +37,7 @@ def compile_flags(args):
         'extra_compile_args': args.extra_flags,
         'library_dirs': args.libraries_dir,
         'extra_link_args': args.extra_flags,
+        'config': args.config,
     }
     for param in ('opts', ):
         val = getattr(args, param, None)
@@ -47,10 +48,16 @@ def compile_flags(args):
 
 
 def run():
+
+    prefix_chars = "-"
+    if os.name == "nt":
+        prefix_chars += "/"
+
     parser = argparse.ArgumentParser(prog='pythran',
                                      description='pythran: a python to C++ '
                                      'compiler',
                                      epilog="It's a megablast!",
+                                     prefix_chars=prefix_chars,
                                      fromfile_prefix_chars="@")
 
     parser.add_argument('input_file', type=str,
@@ -108,6 +115,11 @@ def run():
                         action='append',
                         help='any macro undef relevant to '
                              'the underlying C++ compiler',
+                        default=list())
+
+    parser.add_argument('--config', dest='config', metavar='config',
+                        action='append',
+                        help='config additional params',
                         default=list())
 
     parser.convert_arg_line_to_args = convert_arg_line_to_args

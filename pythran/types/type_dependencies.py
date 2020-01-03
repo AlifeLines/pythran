@@ -410,12 +410,7 @@ class TypeDependencies(ModuleAnalysis):
         return list({frozenset.union(*p) for p in itertools.product(*params)})
 
     @staticmethod
-    def visit_Num(_):
-        """ Return no dependencies on others functions. """
-        return [frozenset()]
-
-    @staticmethod
-    def visit_Str(_):
+    def visit_Constant(_):
         """ Return no dependencies on others functions. """
         return [frozenset()]
 
@@ -447,7 +442,7 @@ class TypeDependencies(ModuleAnalysis):
             self.naming[node.id] = deps
             return deps
         else:
-            raise PythranInternalError("Variable '{}' use before assignment"
+            raise PythranInternalError("Variable '{}' used before assignment"
                                        "".format(node.id))
 
     def visit_List(self, node):

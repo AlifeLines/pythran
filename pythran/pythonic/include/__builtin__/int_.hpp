@@ -15,11 +15,15 @@ namespace __builtin__
       using callable = void;
       using type = long;
 
-      type operator()(char const t[], int base) const;
-      type operator()(types::str const &t, int base) const;
+      type operator()(char const t[], long base) const;
+      type operator()(types::str const &t, long base) const;
       template <class T>
       type operator()(T &&t) const;
       type operator()() const;
+      friend std::ostream &operator<<(std::ostream &os, int_)
+      {
+        return os << "int";
+      }
     };
   }
 }

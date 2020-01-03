@@ -7,14 +7,14 @@ from collections import defaultdict
 from pythran.analyses import Globals, Aliases
 from pythran.intrinsic import Intrinsic
 from pythran.passmanager import FunctionAnalysis
-from pythran.interval import Interval, UNKNOWN_RANGE
+from pythran.interval import Interval, IntervalTuple, UNKNOWN_RANGE
 from pythran.tables import MODULES, attributes
 
 
 def combine(op, node0, node1):
     key = '__{}__'.format(op.__class__.__name__.lower())
     try:
-        return getattr(Interval, key)(node0, node1)
+        return getattr(type(node0), key)(node0, node1)
     except AttributeError:
         return UNKNOWN_RANGE
 
@@ -353,9 +353,9 @@ class RangeValues(FunctionAnalysis):
         res = []
         for op, comparator in zip(node.ops, node.comparators):
             comparator = self.visit(comparator)
-            fake = ast.Compare(ast.Name('x', ast.Load(), None),
+            fake = ast.Compare(ast.Name('x', ast.Load(), None, None),
                                [op],
-                               [ast.Name('y', ast.Load(), None)])
+                               [ast.Name('y', ast.Load(), None, None)])
             fake = ast.Expression(fake)
             ast.fix_missing_locations(fake)
             expr = compile(ast.gast_to_ast(fake), '<range_values>', 'eval')
@@ -382,7 +382,7 @@ class RangeValues(FunctionAnalysis):
         """
         for alias in self.aliases[node.func]:
             if alias is MODULES['__builtin__']['getattr']:
-                attr_name = node.args[-1].s
+                attr_name = node.args[-1].value
                 attribute = attributes[attr_name][-1]
                 self.add(node, attribute.return_range(None))
             elif isinstance(alias, Intrinsic):
@@ -393,15 +393,19 @@ class RangeValues(FunctionAnalysis):
                 return self.generic_visit(node)
         return self.result[node]
 
-    def visit_Num(self, node):
+    def visit_Constant(self, node):
         """ Handle literals integers values. """
-        if isinstance(node.n, int):
-            return self.add(node, Interval(node.n, node.n))
+        if isinstance(node.value, (bool, int)):
+            return self.add(node, Interval(node.value, node.value))
         return UNKNOWN_RANGE
 
     def visit_Name(self, node):
         """ Get range for parameters for examples or false branching. """
         return self.add(node, self.result[node.id])
+
+    def visit_Tuple(self, node):
+        return self.add(node,
+                        IntervalTuple(self.visit(elt) for elt in node.elts))
 
     def visit_Index(self, node):
         return self.add(node, self.visit(node.value))
@@ -410,7 +414,7 @@ class RangeValues(FunctionAnalysis):
         if isinstance(node.value, ast.Call):
             for alias in self.aliases[node.value.func]:
                 if alias is MODULES['__builtin__']['getattr']:
-                    attr_name = node.value.args[-1].s
+                    attr_name = node.value.args[-1].value
                     attribute = attributes[attr_name][-1]
                     self.add(node, attribute.return_range_content(None))
                 elif isinstance(alias, Intrinsic):
@@ -424,7 +428,9 @@ class RangeValues(FunctionAnalysis):
             self.visit(node.slice)
             return self.result[node]
         else:
-            return self.generic_visit(node)
+            value = self.visit(node.value)
+            slice = self.visit(node.slice)
+            return self.add(node, value[slice])
 
     def visit_ExceptHandler(self, node):
         """ Add a range value for exception variable.

@@ -500,12 +500,6 @@ def np_rosen_der(x):
     def test_searchsorted0(self):
         self.run_test("def np_searchsorted0(x): from numpy import searchsorted; return searchsorted(x, 3, 'right')", numpy.arange(6), np_searchsorted0=[NDArray[int,:]])
 
-    def test_rank1(self):
-        self.run_test("def np_rank1(x): from numpy import rank; return rank(x)", numpy.arange(24).reshape(2,3,4), np_rank1=[NDArray[int, :, :, :]])
-
-    def test_rank0(self):
-        self.run_test("def np_rank0(x): from numpy import rank; return rank(x)", numpy.arange(6), np_rank0=[NDArray[int,:]])
-
     def test_rot904(self):
         self.run_test("def np_rot904(x): from numpy import rot90; return rot90(x, 4)", numpy.arange(24).reshape(2,3,4), np_rot904=[NDArray[int, :, :, :]])
 
@@ -552,7 +546,16 @@ def np_rosen_der(x):
         self.run_test("def np_sort3(a): from numpy import sort ; return sort(a, 0)", numpy.arange(2*3*4, 0, -1).reshape(2,3,4), np_sort3=[NDArray[int, :, :, :]])
 
     def test_sort4(self):
-        self.run_test("def np_sort4(a): from numpy import sort ; return sort(a, 1)", numpy.arange(2*3*4, 0, -1).reshape(2,3,4), np_sort4=[NDArray[int, :, :, :]])
+        self.run_test("def np_sort4(a): from numpy import sort ; return sort(a, 1, kind='quicksort')", numpy.arange(2*3*4, 0, -1).reshape(2,3,4), np_sort4=[NDArray[int, :, :, :]])
+
+    def test_sort5(self):
+        self.run_test("def np_sort5(a): from numpy import sort ; return sort(a, 1, kind='heapsort')", numpy.arange(2*3*5, 0, -1).reshape(2,3,5), np_sort5=[NDArray[int, :, :, :]])
+
+    def test_sort6(self):
+        self.run_test("def np_sort6(a): from numpy import sort ; return sort(a, 0, kind='stable')", numpy.arange(2*3*6, 0, -1).reshape(2,3,6), np_sort6=[NDArray[int, :, :, :]])
+
+    def test_sort7(self):
+        self.run_test("def np_sort7(a): from numpy import sort ; return sort(a, 2, kind='mergesort')", numpy.arange(2*3*7, 0, -1).reshape(2,3,7), np_sort7=[NDArray[int, :, :, :]])
 
     def test_sort_complex0(self):
         self.run_test("def np_sort_complex0(a): from numpy import sort_complex ; return sort_complex(a)", numpy.array([[1,6],[7,5]]), np_sort_complex0=[NDArray[int,:,:]])
@@ -663,6 +666,18 @@ def np_rosen_der(x):
 
     def test_fix4(self):
         self.run_test("def np_fix4(x): from numpy import fix ; return fix(x+x)", numpy.array([2.1, 2.9, -2.1, -2.9]), np_fix4=[NDArray[float,:]])
+
+    def test_cross1(self):
+        self.run_test("def np_cross1(x): from numpy import cross ; return cross(x, [3,4,5])", numpy.array([2.1, 2.9]), np_cross1=[NDArray[float,:]])
+
+    def test_cross2(self):
+        self.run_test("def np_cross2(x): from numpy import cross ; return cross(x, -x)", numpy.array([2.1, 2.9, -2.1]), np_cross2=[NDArray[float,:]])
+
+    def test_cross3(self):
+        self.run_test("def np_cross3(x): from numpy import cross ; return cross(x, 2 * x)", numpy.array([[2.1, 2.9, -2.9]]), np_cross3=[NDArray[float,:, :]])
+
+    def test_cross4(self):
+        self.run_test("def np_cross4(x): from numpy import cross ; return cross(x, [[1,2]])", numpy.array([[2.9, -2.1, -2.9]]), np_cross4=[NDArray[float,:, :]])
 
     def test_finfo0(self):
         self.run_test("def np_finfo0(): from numpy import finfo, float64 ; x = finfo(float64) ; return x.eps", np_finfo0=[])

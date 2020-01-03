@@ -289,7 +289,7 @@ CLASSES = {
         "remove": MethodIntr(signature=Fun[[Set[T0], T0], None]),
         "isdisjoint": ConstMethodIntr(
             signature=Fun[[Set[T0], Set[T0]], bool]),
-        "union_": ConstMethodIntr(
+        "union": ConstMethodIntr(
             signature=Union[
                 Fun[[Set[T0], Iterable[T0]], Set[T0]],
                 Fun[[Set[T0], Iterable[T0], Iterable[T0]], Set[T0]],
@@ -2571,9 +2571,10 @@ MODULES = {
             "static_list": ReadOnceFunctionIntr(
                 signature=Fun[[Iterable[T0]], List[T0]]),
             "is_none": ConstFunctionIntr(),
+            "kwonly": ConstFunctionIntr(),
             "len_set": ConstFunctionIntr(signature=Fun[[Iterable[T0]], int]),
             "make_shape": ConstFunctionIntr(),
-            "static_if_": ConstFunctionIntr(),
+            "static_if": ConstFunctionIntr(),
             "StaticIfBreak": ConstFunctionIntr(),
             "StaticIfCont": ConstFunctionIntr(),
             "StaticIfNoReturn": ConstFunctionIntr(),
@@ -2649,7 +2650,7 @@ MODULES = {
         "all": ReadOnceFunctionIntr(signature=Fun[[Iterable[T0]], bool]),
         "any": ReadOnceFunctionIntr(signature=Fun[[Iterable[T0]], bool]),
         "bin": ConstFunctionIntr(signature=Fun[[int], str]),
-        "bool_": ConstFunctionIntr(signature=_bool_signature),
+        "bool": ConstFunctionIntr(signature=_bool_signature),
         "chr": ConstFunctionIntr(signature=Fun[[int], str]),
         "cmp": ConstFunctionIntr(
             signature=Fun[[T0, T0], int],
@@ -2694,14 +2695,15 @@ MODULES = {
                 Fun[[Fun[[T0], bool], Iterable[T0]], List[T0]],
             ],
         ),
-        "float_": ClassWithConstConstructor(
+        "float": ClassWithConstConstructor(
             CLASSES['float'],
             signature=_float_signature
         ),
         "getattr": ConstFunctionIntr(),
         "hex": ConstFunctionIntr(signature=Fun[[int], str]),
         "id": ConstFunctionIntr(signature=Fun[[T0], int]),
-        "int_": ConstFunctionIntr(signature=_int_signature),
+        "int": ConstFunctionIntr(signature=_int_signature),
+        "isinstance": ConstFunctionIntr(signature=Fun[[T0, T1], bool]),
         "iter": FunctionIntr(
             signature=Fun[[Iterable[T0]], Generator[T0]]),  # not const
         "len": ConstFunctionIntr(
@@ -2732,6 +2734,7 @@ MODULES = {
             ]
         ),
         "max": ReadOnceFunctionIntr(
+            kwonlyargs=('key',),
             signature=Union[
                 Fun[[T0, T0], T0],
                 Fun[[T0, T0, T0], T0],
@@ -2741,6 +2744,7 @@ MODULES = {
             return_range=interval.max_values
         ),
         "min": ReadOnceFunctionIntr(
+            kwonlyargs=('key', 'default'),
             signature=Union[
                 Fun[[int, int], int],
                 Fun[[float, float], float],
@@ -2826,6 +2830,7 @@ MODULES = {
                 Fun[[List[T0]], Iterable[T0]],
             ],
         ),
+        "type": ConstFunctionIntr(),
         "xrange": ConstFunctionIntr(
             signature=Union[
                 Fun[[int], Generator[int]],
@@ -2900,6 +2905,14 @@ MODULES = {
                 signature=_numpy_binary_op_float_signature
             ),
             "yvp": UFunc(
+                BINARY_UFUNC,
+                signature=_numpy_binary_op_float_signature
+            ),
+            "spherical_jn": UFunc(
+                BINARY_UFUNC,
+                signature=_numpy_binary_op_float_signature
+            ),
+            "spherical_yn": UFunc(
                 BINARY_UFUNC,
                 signature=_numpy_binary_op_float_signature
             ),
@@ -3392,8 +3405,12 @@ MODULES = {
             BINARY_UFUNC,
             signature=_numpy_int_binary_op_signature
         ),
-        "bool_": ConstFunctionIntr(signature=_bool_signature),
+        "bool": ConstFunctionIntr(signature=_bool_signature),
         "broadcast_to": ConstFunctionIntr(),
+        "byte": ConstFunctionIntr(signature=_int_signature),
+        "cbrt": ConstFunctionIntr(
+            signature=_numpy_unary_op_float_signature
+        ),
         "ceil": ConstFunctionIntr(signature=_numpy_float_unary_op_signature),
         "clip": ConstMethodIntr(signature=_numpy_ternary_op_signature),
         "concatenate": ConstFunctionIntr(
@@ -3667,6 +3684,7 @@ MODULES = {
         "cosh": ConstFunctionIntr(
             signature=_numpy_unary_op_float_signature
         ),
+        "cross": ConstFunctionIntr(),
         "ctypeslib": {
             "as_array": ConstFunctionIntr()
         },
@@ -3685,7 +3703,7 @@ MODULES = {
         "degrees": ConstFunctionIntr(
             signature=_numpy_float_unary_op_float_signature
         ),
-        "delete_": ConstFunctionIntr(),
+        "delete": ConstFunctionIntr(),
         "diag": ConstFunctionIntr(),
         "diagflat": ConstFunctionIntr(),
         "diagonal": ConstMethodIntr(),
@@ -3693,7 +3711,7 @@ MODULES = {
         "digitize": ConstFunctionIntr(),
         "divide": UFunc(BINARY_UFUNC),
         "dot": ConstMethodIntr(),
-        "double_": ConstFunctionIntr(signature=_float_signature),
+        "double": ConstFunctionIntr(signature=_float_signature),
         "dtype": ClassWithConstConstructor(CLASSES["dtype"]),
         "e": ConstantIntr(),
         "ediff1d": ConstFunctionIntr(),
@@ -3729,7 +3747,7 @@ MODULES = {
         "float32": ConstFunctionIntr(signature=_float_signature),
         "float64": ConstFunctionIntr(signature=_float_signature),
         "float128": ConstFunctionIntr(signature=_float_signature),
-        "float_": ConstFunctionIntr(signature=_float_signature),
+        "float": ConstFunctionIntr(signature=_float_signature),
         "floor": ConstFunctionIntr(signature=_numpy_float_unary_op_signature),
         "floor_divide": UFunc(BINARY_UFUNC),
         "fmax": UFunc(BINARY_UFUNC),
@@ -3748,6 +3766,7 @@ MODULES = {
             BINARY_UFUNC,
             signature=_numpy_binary_op_bool_signature,
         ),
+        "heaviside": UFunc(BINARY_UFUNC),
         "hstack": ConstFunctionIntr(),
         "hypot": UFunc(BINARY_UFUNC),
         "identity": ConstFunctionIntr(),
@@ -3817,6 +3836,7 @@ MODULES = {
             BINARY_UFUNC,
             signature=_numpy_int_binary_op_signature
         ),
+        "longlong": ConstFunctionIntr(signature=_int_signature),
         "max": ConstMethodIntr(signature=_numpy_unary_op_axis_signature),
         "maximum": UFunc(
             BINARY_UFUNC,
@@ -3882,19 +3902,54 @@ MODULES = {
                                      global_effects=True),
             "bytes": FunctionIntr(args=('length',),
                                   global_effects=True),
+            "chisquare": FunctionIntr(args=('df', 'size',),
+                                    global_effects=True),
             "choice": FunctionIntr(args=('a', 'size', 'replace', 'p'),
                                    global_effects=True),
+            "dirichlet": FunctionIntr(args=('alpha', 'size',),
+                                    global_effects=True),
+            "exponential": FunctionIntr(args=('scale', 'size',),
+                                    defaults=(1.0, None,),
+                                    global_effects=True),
+            "f": FunctionIntr(args=('dfnum', 'dfden', 'size'),
+                                    global_effects=True),
+            "gamma": FunctionIntr(args=('shape', 'scale', 'size',),
+                                    defaults=(None, 1.0, None,),
+                                    global_effects=True),
+            "geometric": FunctionIntr(args=('p', 'size',),
+                                    global_effects=True),
+            "pareto": FunctionIntr(args=('a', 'size',),
+                                    global_effects=True),
+            "gumbel": FunctionIntr(args=('loc', 'scale', 'size',),
+                                   defaults=(0.0, 1.0, None,),
+                                   global_effects=True),                        
             "poisson": FunctionIntr(args=('lam', 'size',),
                                     defaults=(1.0, None,),
                                     global_effects=True),
+            "negative_binomial": FunctionIntr(args=('n', 'p', 'size',),
+                                   global_effects=True),
             "normal": FunctionIntr(args=('loc', 'scale', 'size',),
                                    defaults=(0.0, 1.0, None,),
                                    global_effects=True),
+            "laplace": FunctionIntr(args=('loc', 'scale', 'size',),
+                                   defaults=(0.0, 1.0, None,),
+                                   global_effects=True),       
+            "logistic": FunctionIntr(args=('loc', 'scale', 'size',),
+                                   defaults=(0.0, 1.0, None,),
+                                   global_effects=True),                                       
+            "lognormal": FunctionIntr(args=('mean', 'sigma', 'size',),
+                                   defaults=(0.0, 1.0, None,),
+                                   global_effects=True),
+            "logseries": FunctionIntr(args=('p', 'size',),
+                                    global_effects=True),                                   
+            "power": FunctionIntr(args=('a', 'size',),
+                                  global_effects=True),
             "rand": FunctionIntr(args=(),
                                  global_effects=True),
             "ranf": FunctionIntr(args=('size',),
                                  global_effects=True),
             "randint": FunctionIntr(args=("low", "high", "size"),
+                                    defaults=(None, None),
                                     global_effects=True),
             "randn": FunctionIntr(args=(),
                                   global_effects=True),
@@ -3904,14 +3959,22 @@ MODULES = {
                                             global_effects=True),
             "random_sample": FunctionIntr(args=('size',),
                                           global_effects=True),
+            "rayleigh": FunctionIntr(args=('scale', 'size',),
+                                    defaults=(1.0, None,),
+                                    global_effects=True),
             "sample": FunctionIntr(args=('size',),
                                    global_effects=True),
             "seed": FunctionIntr(global_effects=True),
             "shuffle": FunctionIntr(global_effects=True),
+            "standard_exponential": FunctionIntr(args=('size',),
+                                    global_effects=True),                                    
+            "standard_gamma": FunctionIntr(args=('shape', 'size',),
+                                    global_effects=True),
             "standard_normal": FunctionIntr(args=('size',),
-                                            global_effects=True),
+                                    global_effects=True),
+            "weibull": FunctionIntr(args=('a', 'size',),
+                                    global_effects=True),
         },
-        "rank": ConstFunctionIntr(),
         "ravel": ConstMethodIntr(),
         "real": FunctionIntr(),
         "reciprocal": ConstFunctionIntr(),
@@ -3932,6 +3995,7 @@ MODULES = {
         "select": ConstFunctionIntr(),
         "setdiff1d": ConstFunctionIntr(),
         "shape": ConstFunctionIntr(),
+        "short_": ConstFunctionIntr(signature=_int_signature),
         "sign": ConstFunctionIntr(),
         "signbit": ConstFunctionIntr(),
         "sin": ConstFunctionIntr(signature=_numpy_unary_op_float_signature),
@@ -3944,14 +4008,14 @@ MODULES = {
         "split": ConstFunctionIntr(),
         "sqrt": ConstFunctionIntr(signature=_numpy_unary_op_float_signature),
         "square": ConstFunctionIntr(),
-        "std_": ConstMethodIntr(args=('a', 'axis', 'dtype'),
-                                defaults=(None, None)),
+        "std": ConstMethodIntr(),
         "subtract": UFunc(
             BINARY_UFUNC,
             signature=_numpy_binary_op_signature,
         ),
         "sum": ConstMethodIntr(signature=_numpy_unary_op_sum_axis_signature),
         "swapaxes": ConstMethodIntr(),
+        "short": ConstFunctionIntr(signature=_int_signature),
         "take": ConstMethodIntr(),
         "tan": ConstFunctionIntr(signature=_numpy_unary_op_float_signature),
         "tanh": ConstFunctionIntr(signature=_numpy_unary_op_float_signature),
@@ -3971,10 +4035,12 @@ MODULES = {
         "uintc": ConstFunctionIntr(signature=_int_signature),
         "uintp": ConstFunctionIntr(signature=_int_signature),
         "uint8": ConstFunctionIntr(signature=_int_signature),
+        "ulonglong": ConstFunctionIntr(signature=_int_signature),
         "union1d": ConstFunctionIntr(),
         "unique": ConstFunctionIntr(),
         "unwrap": ConstFunctionIntr(),
         "unravel_index": ConstFunctionIntr(),
+        "ushort": ConstFunctionIntr(signature=_int_signature),
         "var": ConstMethodIntr(),
         "vstack": ConstFunctionIntr(),
         "stack": ConstFunctionIntr(),
@@ -4304,7 +4370,7 @@ MODULES = {
         "get_wtime": FunctionIntr(global_effects=True),
         "get_wtick": FunctionIntr(global_effects=True),
     },
-    "operator_": {
+    "operator": {
         "lt": ConstFunctionIntr(signature=_operator_eq_signature),
         "le": ConstFunctionIntr(signature=_operator_eq_signature),
         "eq": ConstFunctionIntr(signature=_operator_eq_signature),
@@ -4362,7 +4428,7 @@ MODULES = {
         "__sub__": ConstFunctionIntr(signature=_operator_sub_signature),
         "truediv": ConstFunctionIntr(),
         "__truediv__": ConstFunctionIntr(),
-        "xor_": ConstFunctionIntr(),
+        "xor": ConstFunctionIntr(),
         "__xor__": ConstFunctionIntr(),
         "concat": ConstFunctionIntr(),
         "__concat__": ConstFunctionIntr(),
@@ -4415,7 +4481,7 @@ MODULES = {
         "__theitemgetter__": ConstFunctionIntr(),
         "itemgetter": MethodIntr(
             return_alias=lambda _: {
-                MODULES['operator_']['__theitemgetter__']}
+                MODULES['operator']['__theitemgetter__']}
         ),
 
     },
@@ -4480,10 +4546,10 @@ if sys.version_info.major == 3:
     del MODULES['itertools']['imap']
     del MODULES['itertools']['izip']
     del MODULES['itertools']['ifilter']
-    del MODULES['operator_']['idiv']
-    del MODULES['operator_']['__idiv__']
-    del MODULES['operator_']['div']
-    del MODULES['operator_']['__div__']
+    del MODULES['operator']['idiv']
+    del MODULES['operator']['__idiv__']
+    del MODULES['operator']['div']
+    del MODULES['operator']['__div__']
     del MODULES['__builtin__']['cmp']
     del MODULES['__builtin__']['file']
     del MODULES['__builtin__']['xrange']
@@ -4495,11 +4561,11 @@ if sys.version_info.major == 3:
         }
     }
     if sys.version_info.minor < 5:
-        del MODULES['operator_']['matmul']
-        del MODULES['operator_']['__matmul__']
+        del MODULES['operator']['matmul']
+        del MODULES['operator']['__matmul__']
 else:
-    del MODULES['operator_']['matmul']
-    del MODULES['operator_']['__matmul__']
+    del MODULES['operator']['matmul']
+    del MODULES['operator']['__matmul__']
 
 # OMP version
 try:
@@ -4543,9 +4609,7 @@ for module_name in ["omp", "scipy.special", "scipy"]:
 
 # check and delete unimplemented numpy methods
 for method in list(MODULES['numpy'].keys()):
-    if (method not in sys.modules['numpy'].__dict__ and not
-            (method[-1:] == '_' and method[:-1] in cxx_keywords and
-             method[:-1] in sys.modules['numpy'].__dict__)):
+    if method not in sys.modules['numpy'].__dict__:
         del MODULES['numpy'][method]
 
 
@@ -4560,16 +4624,18 @@ def save_arguments(module_name, elements):
             try:
                 themodule = __import__(".".join(module_name))
                 obj = getattr(themodule, elem)
+                while hasattr(obj, '__wrapped__'):
+                    obj = obj.__wrapped__
                 spec = getfullargspec(obj)
                 if signature.args.args:
                     logger.warn(
                         "Overriding pythran description with argspec information for: {}".format(".".join(module_name + (elem,)))
                     )
 
-                args = [ast.Name(arg, ast.Param(), None) for arg in spec.args]
+                args = [ast.Name(arg, ast.Param(), None, None) for arg in spec.args]
                 defaults = list(spec.defaults or [])
                 if sys.version_info.major == 3:
-                    args += [ast.Name(arg, ast.Param(), None) for arg in spec.kwonlyargs]
+                    args += [ast.Name(arg, ast.Param(), None, None) for arg in spec.kwonlyargs]
                     defaults += [spec.kwonlydefaults[kw] for kw in spec.kwonlyargs]
 
                 # Avoid use of comprehension to fill "as much args/defauls" as
@@ -4674,4 +4740,3 @@ beniget.beniget.Builtins['__dispatch__'] = object()
 for k, v in MODULES['__builtin__'].items():
     if k not in beniget.beniget.Builtins:
         beniget.beniget.Builtins[k] = v
-

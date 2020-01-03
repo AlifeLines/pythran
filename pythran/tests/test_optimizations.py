@@ -355,7 +355,6 @@ def foo(a):
         b = 2
     return b"""
         ref = """def foo(a):
-    pass
     return 2"""
         self.check_ast(init, ref, ["pythran.optimizations.ForwardSubstitution", "pythran.optimizations.DeadCodeElimination"])
 
@@ -376,8 +375,8 @@ def foo(a):
         self.check_ast(init, ref, ["pythran.optimizations.DeadCodeElimination"])
 
     def test_deadcodeelimination4(self):
-        init = 'def noeffect(i): a=[];b=[a]; __builtin__.list.append(b[0],i); return None'
-        ref = 'def noeffect(i):\n    pass\n    pass\n    pass\n    return __builtin__.None'
+        init = 'def noeffect(i): a=[];b=[a]; __builtin__.list.append(b[0],i); return 1'
+        ref = 'def noeffect(i):\n    return 1'
         self.check_ast(init, ref, ["pythran.optimizations.ForwardSubstitution",
                                    "pythran.optimizations.ConstantFolding",
                                    "pythran.optimizations.DeadCodeElimination"])
@@ -409,6 +408,25 @@ def foo(a):
         ref = """def foo(a):
     return (a ** 2)"""
         self.check_ast(init, ref, ["pythran.optimizations.PatternTransform"])
+
+    def test_patternmatching4(self):
+        init = """
+def foo(a):
+    return a ** .5"""
+        ref = """import numpy as __pythran_import_numpy
+def foo(a):
+    return __pythran_import_numpy.sqrt(a)"""
+        self.check_ast(init, ref, ["pythran.optimizations.PatternTransform"])
+
+    def test_patternmatching5(self):
+        init = """
+def foo(a):
+    return a ** (1./3.)"""
+        ref = """import numpy as __pythran_import_numpy
+def foo(a):
+    return __pythran_import_numpy.cbrt(a)"""
+        self.check_ast(init, ref, ["pythran.optimizations.ConstantFolding",
+                                   "pythran.optimizations.PatternTransform"])
 
     def test_inline_builtins_broadcasting0(self):
         init = """
@@ -489,6 +507,9 @@ class TestConstantUnfolding(TestEnv):
 
     def test_constant_folding_too_expansive_calls(self):
         self.run_test("def constant_folding_too_expansive_calls(): return range(2**16)", constant_folding_too_expansive_calls=[])
+
+    def test_constant_folding_bool_array(self):
+        self.run_test("def constant_folding_bool_array(): import numpy as np; return np.concatenate([np.array([True]),np.array([True])])", constant_folding_bool_array=[])
 
 
 class TestAnalyses(TestEnv):

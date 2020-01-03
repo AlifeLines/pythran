@@ -80,7 +80,8 @@ namespace types
   typename numpy_expr<Op, Args...>::const_iterator
       numpy_expr<Op, Args...>::_begin(utils::index_sequence<I...>) const
   {
-    return {{(size() == std::get<0>(std::get<I>(args).shape()))...},
+    return {{make_step(std::get<0>(_shape),
+                       std::get<0>(std::get<I>(args).shape()))...},
             const_cast<typename std::decay<Args>::type const &>(
                 std::get<I>(args)).begin()...};
   }
@@ -97,7 +98,8 @@ namespace types
   typename numpy_expr<Op, Args...>::const_iterator
       numpy_expr<Op, Args...>::_end(utils::index_sequence<I...>) const
   {
-    return {{(size() == std::get<0>(std::get<I>(args).shape()))...},
+    return {{make_step(std::get<0>(_shape),
+                       std::get<0>(std::get<I>(args).shape()))...},
             const_cast<typename std::decay<Args>::type const &>(
                 std::get<I>(args)).end()...};
   }
@@ -150,7 +152,8 @@ namespace types
   typename numpy_expr<Op, Args...>::iterator
       numpy_expr<Op, Args...>::_begin(utils::index_sequence<I...>)
   {
-    return {{(size() == std::get<0>(std::get<I>(args).shape()))...},
+    return {{make_step(std::get<0>(_shape),
+                       std::get<0>(std::get<I>(args).shape()))...},
             const_cast<typename std::decay<Args>::type &>(std::get<I>(args))
                 .begin()...};
   }
@@ -166,7 +169,8 @@ namespace types
   typename numpy_expr<Op, Args...>::iterator
       numpy_expr<Op, Args...>::_end(utils::index_sequence<I...>)
   {
-    return {{(size() == std::get<0>(std::get<I>(args).shape()))...},
+    return {{make_step(std::get<0>(_shape),
+                       std::get<0>(std::get<I>(args).shape()))...},
             const_cast<typename std::decay<Args>::type &>(std::get<I>(args))
                 .end()...};
   }
@@ -211,7 +215,8 @@ namespace types
       numpy_expr<Op, Args...>::_vbegin(vectorize,
                                        utils::index_sequence<I...>) const
   {
-    return {{(size() == std::get<0>(std::get<I>(args).shape()))...},
+    return {{make_step(std::get<0>(_shape),
+                       std::get<0>(std::get<I>(args).shape()))...},
             std::make_tuple(const_cast<typename std::decay<Args>::type const &>(
                                 std::get<I>(args)).begin()...),
             std::get<I>(args).vbegin(vectorize{})...};
@@ -230,7 +235,8 @@ namespace types
       numpy_expr<Op, Args...>::_vend(vectorize,
                                      utils::index_sequence<I...>) const
   {
-    return {{(size() == std::get<0>(std::get<I>(args).shape()))...},
+    return {{make_step(std::get<0>(_shape),
+                       std::get<0>(std::get<I>(args).shape()))...},
             std::make_tuple(const_cast<typename std::decay<Args>::type const &>(
                                 std::get<I>(args)).end()...),
             std::get<I>(args).vend(vectorize{})...};
@@ -280,14 +286,12 @@ namespace types
 #endif
 
   template <class Op, class... Args>
-  template <class S0, class... S>
-  auto numpy_expr<Op, Args...>::operator()(S0 const &s0, S const &... s) const
-      -> typename std::enable_if<
-          !std::is_scalar<S0>::value || sizeof...(S) != 0,
-          decltype(this->_get(utils::make_index_sequence<sizeof...(Args)>{}, s0,
-                              s...))>::type
+  template <class... S>
+  auto numpy_expr<Op, Args...>::operator()(S const &... s) const
+      -> decltype(this->_get(utils::make_index_sequence<sizeof...(Args)>{},
+                             s...))
   {
-    return _get(utils::make_index_sequence<sizeof...(Args)>{}, s0, s...);
+    return _get(utils::make_index_sequence<sizeof...(Args)>{}, s...);
   }
 
   template <class Op, class... Args>

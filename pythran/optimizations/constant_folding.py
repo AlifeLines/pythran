@@ -3,10 +3,11 @@ from __future__ import print_function
 
 from pythran.analyses import ConstantExpressions, ASTMatcher
 from pythran.passmanager import Transformation
-from pythran.tables import MODULES, cxx_keywords
+from pythran.tables import MODULES
 from pythran.conversion import to_ast, ConversionError, ToNotEval, mangle
 from pythran.analyses.ast_matcher import DamnTooLongPattern
 from pythran.syntax import PythranSyntaxError
+from pythran.utils import isnum
 
 import gast as ast
 from copy import deepcopy
@@ -41,10 +42,6 @@ class ConstantFolding(Transformation):
             if module_name != '__dispatch__':
                 import_name = module_name
 
-                # handle module name conflicting with c++ keywords
-                if(module_name.endswith("_") and
-                   module_name[:-1] in cxx_keywords):
-                    import_name = module_name[:-1]
                 alias_module_name = mangle(module_name)
                 self.env[alias_module_name] = __import__(import_name)
 
@@ -53,18 +50,13 @@ class ConstantFolding(Transformation):
                     if fun in ("__theitemgetter__", "pythran"):
                         # these ones do not exist in Python
                         continue
-                    # Set attributs pointing to another for C++ keyword
-                    # case of __builtin__.int_ that point on __builtin__.int
-                    if not hasattr(self.env[alias_module_name], fun):
-                        setattr(self.env[alias_module_name], fun,
-                                getattr(self.env[alias_module_name],
-                                        fun.strip("_")))
 
         # we need to parse the whole code to be able to apply user-defined pure
         # function but import are resolved before so we remove them to avoid
         # ImportError (for operator_ for example)
         dummy_module = ast.Module([s for s in node.body
-                                   if not isinstance(s, ast.Import)])
+                                   if not isinstance(s, ast.Import)],
+                                  [])
         eval(compile(ast.gast_to_ast(dummy_module),
                      '<constant_folding>', 'exec'),
              self.env)
@@ -74,7 +66,7 @@ class ConstantFolding(Transformation):
     def skip(self, node):
         return node
 
-    visit_Num = visit_Name = skip
+    visit_Constant = visit_Name = skip
 
     visit_List = visit_Set = Transformation.generic_visit
     visit_Dict = visit_Tuple = Transformation.generic_visit
@@ -108,7 +100,7 @@ class ConstantFolding(Transformation):
                 return Transformation.generic_visit(self, node)
             except AttributeError as e:
                 # FIXME union_ function is not handle by constant folding
-                if "union_" in e.args[0]:
+                if "union" in e.args[0]:
                     return Transformation.generic_visit(self, node)
                 elif "pythran" in e.args[0]:
                     # FIXME: Can be fix giving a Python implementation for
@@ -167,14 +159,14 @@ class PartialConstantFolding(Transformation):
     def fold_mult_left(self, node):
         if not isinstance(node.left, (ast.List, ast.Tuple)):
             return False
-        if not isinstance(node.right, ast.Num):
+        if not isnum(node.right):
             return False
         return isinstance(node.op, ast.Mult)
 
     def fold_mult_right(self, node):
         if not isinstance(node.right, (ast.List, ast.Tuple)):
             return False
-        if not isinstance(node.left, ast.Num):
+        if not isnum(node.left):
             return False
         return isinstance(node.op, ast.Mult)
 
@@ -193,7 +185,7 @@ class PartialConstantFolding(Transformation):
         if self.fold_mult_left(node):
             self.update = True
             node.left.elts = [deepcopy(elt)
-                              for _ in range(node.right.n)
+                              for _ in range(node.right.value)
                               for elt in node.left.elts]
             return node.left
 
@@ -245,7 +237,7 @@ class PartialConstantFolding(Transformation):
         if not isinstance(node.slice, ast.Index):
             return node
 
-        if not isinstance(node.slice.value, ast.Num):
+        if not isnum(node.slice.value):
             return node
 
         slice_ = node.value.slice
@@ -253,8 +245,8 @@ class PartialConstantFolding(Transformation):
         node = node.value
 
         node.slice = index
-        lower = slice_.lower or ast.Num(0)
-        step = slice_.step or ast.Num(1)
+        lower = slice_.lower or ast.Constant(0, None)
+        step = slice_.step or ast.Constant(1, None)
         node.slice.value = ast.BinOp(lower,
                                      ast.Add(),
                                      ast.BinOp(index.value,

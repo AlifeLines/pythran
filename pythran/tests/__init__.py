@@ -8,8 +8,8 @@ except ImportError:
     float128 = float64
     complex256 = complex128
 
-from numpy import int8, int16, int32, int64, uint8, uint16, uint32, uint64
-from numpy import ndarray, isnan, isinf, isneginf, complex128, complex64, bool_
+from numpy import intp, intc, number, bool_
+from numpy import ndarray, isnan, isinf, isneginf, complex128, complex64
 from textwrap import dedent
 from threading import Thread
 import copy
@@ -89,7 +89,7 @@ class TestEnv(unittest.TestCase):
     # default options used for the c++ compiler
     PYTHRAN_CXX_FLAGS = ['-O0', '-Wall', '-Wno-unknown-pragmas',
                          '-Wno-mismatched-tags', '-Wno-unused-local-typedefs',
-                         '-Wno-unknown-warning-option', '-Werror'] if sys.platform != "win32" else ['/w']
+                         '-Wno-unknown-warning-option', '-Werror', '-UNDEBUG'] if sys.platform != "win32" else ['/w']
 
     TEST_RETURNVAL = "TEST_RETURNVAL"
 
@@ -97,6 +97,12 @@ class TestEnv(unittest.TestCase):
         """ Check if type between reference and result match. """
         print("Type of Pythran res : ", type(res))
         print("Type of Python ref : ", type(ref))
+
+        # cope with subtle situation under Windows where numpy.uint32 have same
+        # name but different value
+        if type(res).__name__ == type(ref).__name__:
+            return
+
         if isinstance(ref, ndarray):
             # res can be an ndarray of dim 0 because of isneginf call
             if ref.ndim == 0 and (not isinstance(res, ndarray)
@@ -104,14 +110,20 @@ class TestEnv(unittest.TestCase):
                 self.check_type(ref.item(0), res)
             else:
                 self.assertIsInstance(res, type(ref))
-        elif isinstance(ref, (int, int64)):
-            self.assertIsInstance(res, (int, int64))
         elif isinstance(ref, (float, float64)):
             self.assertIsInstance(res, (float, float64))
         elif isinstance(ref, (complex, complex128)):
             self.assertIsInstance(res, (complex, complex128))
         elif isinstance(ref, (bool, bool_)):
             self.assertIsInstance(res, (bool, bool_))
+        elif hasattr(ref, 'dtype'):
+            if hasattr(res, 'dtype'):
+                self.assertEqual(ref.dtype.itemsize, res.dtype.itemsize)
+                self.assertEqual(ref.dtype.type(-1), res.dtype.type(-1))
+            else:
+                self.assertIsInstance(res, int)
+        elif sys.version_info[0] == 2 and isinstance(ref, long):
+            self.assertIsInstance(res, (int, intc, intp, long))
         else:
             self.assertIsInstance(res, type(ref))
 
@@ -358,7 +370,7 @@ class TestEnv(unittest.TestCase):
         """
         pm = PassManager("testing")
 
-        ir, _, _ = frontend.parse(pm, code)
+        ir, _ = frontend.parse(pm, code)
 
         optimizations = [_parse_optimization(opt) for opt in optimizations]
         refine(pm, ir, optimizations)

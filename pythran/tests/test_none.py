@@ -1,7 +1,8 @@
 from pythran.tests import TestEnv
 from unittest import skip
-from pythran.typing import List, Dict
+from pythran.typing import List, Dict, NDArray
 import pythran
+import numpy as np
 
 class TestNone(TestEnv):
 
@@ -538,3 +539,111 @@ def returned_none_member(a):
                     add_error(2, ['DUMMY_PYTHRAN'])
                 return errors'''
         self.run_test(code, {"DUMMY_PYTHRAN":"DUMMY_PYTHRAN"}, none_diorcet2=[Dict[str,str]])
+
+    def test_none_escaping0(self):
+        code = '''
+            def none_escaping0(i):
+                a = 0 
+                c = None
+                if i % 2 == 0:
+                    c = 1
+                if c is not None:
+                    a = 2 
+                    b = 3 
+                    if i < 5:
+                        print(b + i)
+                return a'''
+        self.run_test(code, 3, none_escaping0=[int])
+
+    def test_none_escaping1(self):
+        code = '''
+            def none_escaping1(headers):
+                def get_header():
+                        return None
+
+                lpix = float(headers.get('a'))
+
+                diameter = None
+                if lpix is not None and lpix > 0.0:
+                    diameter = 20.0
+                return diameter'''
+        self.run_test(code, {'a': '10'}, none_escaping1=[Dict[str,str]])
+
+
+class TestIsInstance(TestEnv):
+
+    def test_isinstance_int0(self):
+        self.run_test(
+            'def isinstance_int0(x, y): return isinstance(x, int), isinstance(y, int)',
+            1, '1',
+            isinstance_int0=[int, str])
+
+    def test_isinstance_int1(self):
+        code = 'def isinstance_int1a(x):\n if isinstance(x, int): return x  + 1\n else: return  x * 3'
+        self.run_test(code, 1, isinstance_int1a=[int])
+        code = 'def isinstance_int1b(x):\n if isinstance(x, int): return x  + 1\n else: return  x * 3'
+        self.run_test(code, '1', isinstance_int1b=[str])
+
+    def test_isinstance_int2(self):
+        code = 'def isinstance_int2(x):\n if isinstance(x, int): return 1\n else: return  "3"'
+        self.run_test(code, 1, isinstance_int2=[int])
+
+    def test_isinstance_int3(self):
+        code = 'def isinstance_int3(x):\n if isinstance(x, int) or x is None: return 1\n else: return  "3"'
+        self.run_test(code, 1, isinstance_int3=[int])
+
+    def test_isinstance_complex0(self):
+        code = '''
+            import numpy as np
+
+            def conj (x):
+                if isinstance(x.dtype, complex):
+                    return x.real - 1j*x.imag
+                else:
+                    return x
+
+            def isinstance_complex0(x):
+                return x * conj(x)'''
+        self.run_test(code, np.ones(5, dtype=int),
+                      isinstance_complex0=[NDArray[int,:]])
+
+    def test_isinstance_complex1(self):
+        code = '''
+            import numpy as np
+
+            def conj (x):
+                if isinstance(x.dtype, complex):
+                    return x.real - 1j*x.imag
+                else:
+                    return x
+
+            def isinstance_complex1(x):
+                return x * conj(x)'''
+        self.run_test(code, np.ones(5, dtype=complex) * 2j,
+                      isinstance_complex1=[NDArray[complex,:]])
+
+    def test_inner_loop_break(self):
+        code = '''
+import numpy as np
+from math import sqrt
+
+def hex_area (spot_radius):
+    return sqrt(3)/2 * 3 * spot_radius**2
+
+def inner_loop_break(center, pts, radius, spot_radius, target_area=None):
+    spot_area = hex_area (spot_radius)
+    pts_within_radius = pts[np.abs (pts - center) <= radius]
+    if target_area is None:
+        return pts_within_radius
+    else:
+        area = 0
+        pts_list = []
+        for pt in pts_within_radius:
+            area += spot_area
+            if area < target_area:
+                pts_list.append (pt)
+            else:
+                break
+        return pts_list
+            '''
+        self.run_test(code, 1j, np.array([1j]), 1., 1., 1., inner_loop_break=[complex, NDArray[complex, :], float, float, float])

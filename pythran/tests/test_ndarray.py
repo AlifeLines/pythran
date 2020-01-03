@@ -703,6 +703,21 @@ def assign_ndarray(t):
                 4,
                 ndarray_ubyte=[int])
 
+    def test_ndarray_byte(self):
+        self.run_test("def ndarray_byte(n): import numpy; return numpy.arange(-n, n, 1, dtype=numpy.byte)",
+                4,
+                ndarray_byte=[int])
+
+    def test_ndarray_ushort(self):
+        self.run_test("def ndarray_ushort(n): import numpy; return numpy.arange(0, n, 1, dtype=numpy.ushort)",
+                4,
+                ndarray_ushort=[int])
+
+    def test_ndarray_short(self):
+        self.run_test("def ndarray_short(n): import numpy; return numpy.arange(-n, n, 1, dtype=numpy.short)",
+                4,
+                ndarray_short=[int])
+
     def test_ndarray_1d_index(self):
         self.run_test(
             'def ndarray_1d_index(a): return a[1], a[-1]',
@@ -1107,38 +1122,34 @@ def assign_ndarray(t):
                               (3, 5),
                               transposed_array=[Tuple[int, int]])
 
-    def test_assign_transposed(self):
-        params = [numpy.arange(30.).reshape(5,6), 3, 1, -1]
+    def assign_transposed(self, last):
+        params = [numpy.arange(30.).reshape(5,6), 3, 1, 1]
         code = '''
-            def helper(signal, N, A, B):
+            def helper(signal, N, A):
+                return (signal[N:N-A:-1],
+                        signal[N:N+A],
+                        signal[N-A:N+A],)
 
-                if B == -1:
-                    xx=signal[N:N-A:-1]
-                elif B == 1:
-                    xx=signal[N:N+A]
-                else:
-                    xx=signal[N-A:N+A]
-                return xx
-            def assign_transposed(signal, N, A, B=0):
-                return helper(signal, N, A, B), helper(signal[:,:], N, A, B), helper(signal.T, N, A, B)'''
-        self.run_test(code, *params, assign_transposed=[NDArray[float,:,:], int, int, int])
-        params[-1] = 0
-        self.run_test(code, *params, assign_transposed=[NDArray[float,:,:], int, int, int])
-        params[-1] = 1
+            def assign_transposed(signal, N, A):
+                return (helper(signal, N, A),
+                        helper(signal[:,:], N, A),
+                        helper(signal.T, N, A),)
+            '''
         self.run_test(code, *params, assign_transposed=[NDArray[float,:,:], int, int, int])
 
     def test_hanning(self):
         code = '''
 import numpy as np
-def hanning(M):
+def helper(M):
     if M < 1:
         return np.array([])
     if M == 1:
         return np.ones(1, float)
     n = np.arange(0,float(M))
-    return 0.5 - 0.5*np.cos(2.0*np.pi*n/(M-1))'''
-        self.run_test(code, 4, hanning=[int])
-        self.run_test(code, 0, hanning=[int])
+    return 0.5 - 0.5*np.cos(2.0*np.pi*n/(M-1))
+def hanning(M):
+    return helper(M * 0), helper(M * 1), helper(M * 4)'''
+        self.run_test(code, 1, hanning=[int])
 
     def test_ones_on_updated_shape(self):
         code = '''
@@ -1160,3 +1171,9 @@ def hanning(M):
                 B = x_transScores[x_transList]
                 return  x_transFrames[x_transList].astype(int),B'''
         self.run_test(code, numpy.arange(300.), numpy_vexpr_static_shape=[NDArray[float, :]])
+
+    def test_subscripting_slice_array_transpose(self):
+        code = 'def subscripting_slice_array_transpose(x): return x.T[(slice(0,1),slice(0,1))]'
+        self.run_test(code,
+                      numpy.arange(200.).reshape(10, 20),
+                      subscripting_slice_array_transpose=[NDArray[float, :, :]])

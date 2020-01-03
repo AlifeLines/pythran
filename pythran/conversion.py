@@ -33,12 +33,26 @@ def totuple(l):
         return l
 
 
+def dtype_to_ast(name):
+    if name in ('bool',):
+        return ast.Attribute(
+            ast.Name('__builtin__', ast.Load(), None, None),
+            name,
+            ast.Load())
+    else:
+        return ast.Attribute(
+            ast.Name(mangle('numpy'), ast.Load(), None, None),
+            name,
+            ast.Load())
+
+
 def size_container_folding(value):
     """
     Convert value to ast expression if size is not too big.
 
     Converter for sized container.
     """
+
     def size(x):
         return len(getattr(x, 'flatten', lambda: x)())
 
@@ -48,21 +62,26 @@ def size_container_folding(value):
         elif isinstance(value, tuple):
             return ast.Tuple([to_ast(elt) for elt in value], ast.Load())
         elif isinstance(value, set):
-            return ast.Set([to_ast(elt) for elt in value])
+            if value:
+                return ast.Set([to_ast(elt) for elt in value])
+            else:
+                return ast.Call(func=ast.Attribute(
+                    ast.Name(mangle('__builtin__'), ast.Load(), None, None),
+                    'set',
+                    ast.Load()),
+                    args=[],
+                    keywords=[])
         elif isinstance(value, dict):
             keys = [to_ast(elt) for elt in value.keys()]
             values = [to_ast(elt) for elt in value.values()]
             return ast.Dict(keys, values)
         elif isinstance(value, np.ndarray):
             return ast.Call(func=ast.Attribute(
-                ast.Name(mangle('numpy'), ast.Load(), None),
+                ast.Name(mangle('numpy'), ast.Load(), None, None),
                 'array',
                 ast.Load()),
                 args=[to_ast(totuple(value.tolist())),
-                      ast.Attribute(
-                          ast.Name(mangle('numpy'), ast.Load(), None),
-                          value.dtype.name,
-                          ast.Load())],
+                      dtype_to_ast(value.dtype.name)],
                 keywords=[])
         else:
             raise ConversionError()
@@ -74,11 +93,9 @@ def builtin_folding(value):
     """ Convert builtin function to ast expression. """
     if isinstance(value, (type(None), bool)):
         name = str(value)
-    elif value.__name__ in ("bool", "float", "int"):
-        name = value.__name__ + "_"
     else:
         name = value.__name__
-    return ast.Attribute(ast.Name('__builtin__', ast.Load(), None),
+    return ast.Attribute(ast.Name('__builtin__', ast.Load(), None, None),
                          name, ast.Load())
 
 
@@ -107,10 +124,8 @@ def to_ast(value):
         return builtin_folding(value)
     elif isinstance(value, np.generic):
         return to_ast(np.asscalar(value))
-    elif isinstance(value, numbers.Number):
-        return ast.Num(value)
-    elif isinstance(value, str):
-        return ast.Str(value)
+    elif isinstance(value, (numbers.Number, str)):
+        return ast.Constant(value, None)
     elif isinstance(value, (list, tuple, set, dict, np.ndarray)):
         return size_container_folding(value)
     elif hasattr(value, "__module__") and value.__module__ == "__builtin__":

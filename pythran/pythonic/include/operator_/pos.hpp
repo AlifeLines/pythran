@@ -9,7 +9,7 @@ namespace operator_
 {
 
   template <class A>
-  auto pos(A const &a) -> decltype(+a);
+  A pos(A const &a);
 
   DEFINE_FUNCTOR(pythonic::operator_, pos);
 }

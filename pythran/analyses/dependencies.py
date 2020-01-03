@@ -34,40 +34,37 @@ class Dependencies(ModuleAnalysis):
         self.result.add(('types', 'slice'))
         self.generic_visit(node)
 
-    def visit_Str(self, node):
-        self.result.add(('types', 'str'))
-
     def visit_Pow(self, node):
         self.result.add(('__builtin__', 'pow'))
-        self.result.add(('operator_', 'ipow'))
+        self.result.add(('operator', 'ipow'))
 
     def visit_Add(self, node):
-        self.result.add(('operator_', 'add'))
+        self.result.add(('operator', 'add'))
 
     def visit_Mult(self, node):
-        self.result.add(('operator_', 'mul'))
+        self.result.add(('operator', 'mul'))
 
     def visit_MatMult(self, node):
-        self.result.add(('operator_', 'matmul'))
-        self.result.add(('operator_', 'imatmul'))
+        self.result.add(('operator', 'matmul'))
+        self.result.add(('operator', 'imatmul'))
 
     def visit_Eq(self, node):
-        self.result.add(('operator_', 'eq'))
+        self.result.add(('operator', 'eq'))
 
     def visit_NotEq(self, node):
-        self.result.add(('operator_', 'ne'))
+        self.result.add(('operator', 'ne'))
 
     def visit_Lt(self, node):
-        self.result.add(('operator_', 'lt'))
+        self.result.add(('operator', 'lt'))
 
     def visit_LtE(self, node):
-        self.result.add(('operator_', 'le'))
+        self.result.add(('operator', 'le'))
 
     def visit_Gt(self, node):
-        self.result.add(('operator_', 'gt'))
+        self.result.add(('operator', 'gt'))
 
     def visit_GtE(self, node):
-        self.result.add(('operator_', 'ge'))
+        self.result.add(('operator', 'ge'))
 
     def visit_In(self, node):
         self.result.add(('__builtin__', 'in'))
@@ -81,14 +78,14 @@ class Dependencies(ModuleAnalysis):
     visit_IsNot = visit_Is
 
     def visit_Add(self, node):
-        self.result.add(('operator_', 'add'))
+        self.result.add(('operator', 'add'))
 
     def visit_And(self, node):
-        self.result.add(('__builtin__', 'pythran', 'and_'))
+        self.result.add(('__builtin__', 'pythran', 'and'))
         self.generic_visit(node)
 
     def visit_Or(self, node):
-        self.result.add(('__builtin__', 'pythran', 'or_'))
+        self.result.add(('__builtin__', 'pythran', 'or'))
         self.generic_visit(node)
 
     def visit_Print(self, node):
@@ -104,26 +101,28 @@ class Dependencies(ModuleAnalysis):
         self.generic_visit(node)
 
     def visit_Mod(self, _):
-        self.result.add(('operator_', 'mod'))
-        self.result.add(('operator_', 'imod'))
+        self.result.add(('operator', 'mod'))
+        self.result.add(('operator', 'imod'))
 
     def visit_Div(self, _):
-        self.result.add(('operator_', 'div'))
-        self.result.add(('operator_', 'idiv'))
+        self.result.add(('operator', 'div'))
+        self.result.add(('operator', 'idiv'))
 
     def visit_FloorDiv(self, _):
-        self.result.add(('operator_', 'floordiv'))
-        self.result.add(('operator_', 'ifloordiv'))
+        self.result.add(('operator', 'floordiv'))
+        self.result.add(('operator', 'ifloordiv'))
 
-    def visit_Num(self, node):
-        if isinstance(node.n, complex):
+    def visit_Constant(self, node):
+        if node.value is None:
+            self.result.add(('__builtin__', 'None'))
+        elif isinstance(node.value, str):
+            self.result.add(('types', 'str'))
+        elif isinstance(node.value, complex):
             self.result.add(('types', 'complex'))
-        elif math.isnan(node.n):
+        elif math.isnan(node.value):
             self.result.add(('numpy', 'nan'))
-        elif math.isinf(node.n):
+        elif math.isinf(node.value):
             self.result.add(('numpy', 'inf'))
-
-        self.generic_visit(node)
 
     def visit_Attribute(self, node):
         def rec(n):

@@ -43,6 +43,17 @@ if LooseVersion(setuptools.__version__) < MinimalSetuptoolsVersion:
     print()
     raise ImportError("setuptools")
 
+if sys.version_info.major < 3:
+    print()
+    print("************************************************")
+    print("* Python 2 is getting closer to end-of-support *")
+    print("************************************************")
+    print("*                                              *")
+    print("* Pythran follows https://python3statement.org *")
+    print("*                                              *")
+    print("************************************************")
+    print()
+
 
 logger = logging.getLogger("pythran")
 logger.addHandler(logging.StreamHandler())
@@ -121,13 +132,6 @@ xsimd_headers = ['xsimd/' + '*/' * i + '*.hpp' for i in range(1, 20)]
 pythonic_headers = ['*/' * i + '*.hpp' for i in range(9)] + ['patch/*']
 sfmt_headers = ['sfmt/*.h', 'sfmt/*.c']
 
-# rename pythran into pythran3 for python3 version
-if sys.version_info[0] == 3:
-    pythran_cmd = 'pythran3'
-else:
-    pythran_cmd = 'pythran'
-
-
 # read longdescr from README
 def longdescr(readme_path):
     with open(readme_path) as readme:
@@ -156,10 +160,12 @@ setup(name='pythran',
           'License :: OSI Approved :: BSD License',
           'Natural Language :: English',
           'Operating System :: POSIX :: Linux',
+          'Operating System :: MacOS',
           'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3',
           'Programming Language :: Python :: Implementation :: CPython',
           'Programming Language :: C++',
+          'Topic :: Software Development :: Compilers',
           'Topic :: Software Development :: Code Generators'
       ],
       license="BSD 3-Clause",
@@ -169,7 +175,9 @@ setup(name='pythran',
                      'pythran-config = pythran.config:run']},
       setup_requires=["pytest-runner"],
       tests_require=['pytest', 'flake8'],
-      extras_require={'deps': ['numpy']},
+      extras_require={
+          'doc': open('docs/requirements.txt').read().splitlines(),
+      },
       test_suite="pythran.tests.test_cases",
       cmdclass={'build_py': BuildWithThirdParty,
                 'develop': DevelopWithThirdParty})

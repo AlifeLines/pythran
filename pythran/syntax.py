@@ -6,6 +6,7 @@ constraints.
 
 from pythran.tables import MODULES
 from pythran.intrinsic import Class
+from pythran.utils import isstr
 
 import sys
 
@@ -54,7 +55,7 @@ class SyntaxChecker(ast.NodeVisitor):
                "functions, comments, or imports")
         WhiteList = ast.FunctionDef, ast.Import, ast.ImportFrom, ast.Assign
         for n in node.body:
-            if isinstance(n, ast.Expr) and isinstance(n.value, ast.Str):
+            if isinstance(n, ast.Expr) and isstr(n.value):
                 continue
             if isinstance(n, WhiteList):
                 continue
@@ -94,14 +95,17 @@ class SyntaxChecker(ast.NodeVisitor):
     def visit_Call(self, node):
         self.generic_visit(node)
 
-    def visit_Ellipsis(self, node):
-        raise PythranSyntaxError("Ellipsis are not supported", node)
-
-    def visit_Num(self, node):
-        if sys.version_info[0] == 2 and isinstance(node.n, long):
+    def visit_Constant(self, node):
+        if sys.version_info[0] == 2 and isinstance(node.value, long):
             raise PythranSyntaxError("long int not supported", node)
+        if node.value is Ellipsis:
+            if hasattr(node, 'lineno'):
+                args = [node]
+            else:
+                args = []
+            raise PythranSyntaxError("Ellipsis are not supported", *args)
         iinfo = np.iinfo(int)
-        if isinstance(node.n, int) and not (iinfo.min <= node.n <= iinfo.max):
+        if isinstance(node.value, int) and not (iinfo.min <= node.value <= iinfo.max):
             raise PythranSyntaxError("large int not supported", node)
 
     def visit_FunctionDef(self, node):
@@ -176,10 +180,10 @@ class SyntaxChecker(ast.NodeVisitor):
                     node)
 
     def visit_Exec(self, node):
-        raise PythranSyntaxError("Exec statement not supported", node)
+        raise PythranSyntaxError("'exec' statements are not supported", node)
 
     def visit_Global(self, node):
-        raise PythranSyntaxError("Global variables not supported", node)
+        raise PythranSyntaxError("'global' statements are not supported", node)
 
 
 def check_syntax(node):
@@ -187,7 +191,7 @@ def check_syntax(node):
     SyntaxChecker().visit(node)
 
 
-def check_specs(specs, renamings, types):
+def check_specs(specs, types):
     '''
     Does nothing but raising PythranSyntaxError if specs
     are incompatible with the actual code
@@ -195,8 +199,7 @@ def check_specs(specs, renamings, types):
     from pythran.types.tog import unify, clone, tr
     from pythran.types.tog import Function, TypeVariable, InferenceError
 
-    functions = {renamings.get(k, k): v for k, v in specs.functions.items()}
-    for fname, signatures in functions.items():
+    for fname, signatures in specs.functions.items():
         ftype = types[fname]
         for signature in signatures:
             sig_type = Function([tr(p) for p in signature], TypeVariable())
@@ -213,17 +216,15 @@ def check_specs(specs, renamings, types):
                 )
 
 
-def check_exports(mod, specs, renamings):
+def check_exports(mod, specs):
     '''
     Does nothing but raising PythranSyntaxError if specs
     references an undefined global
     '''
-    functions = {renamings.get(k, k): v for k, v in specs.functions.items()}
-
     mod_functions = {node.name: node for node in mod.body
                      if isinstance(node, ast.FunctionDef)}
 
-    for fname, signatures in functions.items():
+    for fname, signatures in specs.functions.items():
         try:
             fnode = mod_functions[fname]
         except KeyError:

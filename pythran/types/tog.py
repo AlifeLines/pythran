@@ -11,6 +11,7 @@ from numpy import floating, integer, complexfloating
 from pythran.tables import MODULES, attributes
 import pythran.typing as typing
 from pythran.syntax import PythranSyntaxError
+from pythran.utils import isnum
 
 
 class PythranTypeError(PythranSyntaxError):
@@ -550,17 +551,19 @@ def analyse(node, env, non_generic=None):
             non_generic.add(new_type)
             env[node.id] = new_type
         return get_type(node.id, env, non_generic)
-    elif isinstance(node, gast.Num):
-        if isinstance(node.n, int):
+    elif isinstance(node, gast.Constant):
+        if isinstance(node.value, str):
+            return Str()
+        elif isinstance(node.value, int):
             return Integer()
-        elif isinstance(node.n, float):
+        elif isinstance(node.value, float):
             return Float()
-        elif isinstance(node.n, complex):
+        elif isinstance(node.value, complex):
             return Complex()
+        elif node.value is None:
+            return NoneType
         else:
             raise NotImplementedError
-    elif isinstance(node, gast.Str):
-        return Str()
     elif isinstance(node, gast.Compare):
         left_type = analyse(node.left, env, non_generic)
         comparators_type = [analyse(comparator, env, non_generic)
@@ -585,7 +588,7 @@ def analyse(node, env, non_generic=None):
     elif isinstance(node, gast.Call):
         if is_getattr(node):
             self_type = analyse(node.args[0], env, non_generic)
-            attr_name = node.args[1].s
+            attr_name = node.args[1].value
             _, attr_signature = attributes[attr_name]
             attr_type = tr(attr_signature)
             result_type = TypeVariable()
@@ -624,7 +627,7 @@ def analyse(node, env, non_generic=None):
     elif isinstance(node, gast.IfExp):
         test_type = analyse(node.test, env, non_generic)
         unify(Function([test_type], Bool()),
-              tr(MODULES['__builtin__']['bool_']))
+              tr(MODULES['__builtin__']['bool']))
 
         if is_test_is_none(node.test):
             none_id = node.test.left.id
@@ -692,30 +695,30 @@ def analyse(node, env, non_generic=None):
     elif isinstance(node, gast.Pow):
         return tr(MODULES['numpy']['power'])
     elif isinstance(node, gast.Sub):
-        return tr(MODULES['operator_']['sub'])
+        return tr(MODULES['operator']['sub'])
     elif isinstance(node, (gast.USub, gast.UAdd)):
-        return tr(MODULES['operator_']['pos'])
+        return tr(MODULES['operator']['pos'])
     elif isinstance(node, (gast.Eq, gast.NotEq, gast.Lt, gast.LtE, gast.Gt,
                            gast.GtE, gast.Is, gast.IsNot)):
-        return tr(MODULES['operator_']['eq'])
+        return tr(MODULES['operator']['eq'])
     elif isinstance(node, (gast.In, gast.NotIn)):
-        contains_sig = tr(MODULES['operator_']['contains'])
+        contains_sig = tr(MODULES['operator']['contains'])
         contains_sig.types[:-1] = reversed(contains_sig.types[:-1])
         return contains_sig
     elif isinstance(node, gast.Add):
-        return tr(MODULES['operator_']['add'])
+        return tr(MODULES['operator']['add'])
     elif isinstance(node, gast.Mult):
-        return tr(MODULES['operator_']['mul'])
+        return tr(MODULES['operator']['mul'])
     elif isinstance(node, gast.MatMult):
-        return tr(MODULES['operator_']['matmul'])
+        return tr(MODULES['operator']['matmul'])
     elif isinstance(node, (gast.Div, gast.FloorDiv)):
-        return tr(MODULES['operator_']['floordiv'])
+        return tr(MODULES['operator']['floordiv'])
     elif isinstance(node, gast.Mod):
-        return tr(MODULES['operator_']['mod'])
+        return tr(MODULES['operator']['mod'])
     elif isinstance(node, (gast.LShift, gast.RShift)):
-        return tr(MODULES['operator_']['lshift'])
+        return tr(MODULES['operator']['lshift'])
     elif isinstance(node, (gast.BitXor, gast.BitAnd, gast.BitOr)):
-        return tr(MODULES['operator_']['lshift'])
+        return tr(MODULES['operator']['lshift'])
     elif isinstance(node, gast.List):
         new_type = TypeVariable()
         for elt in node.elts:
@@ -800,9 +803,6 @@ def analyse(node, env, non_generic=None):
         return Slice
     elif isinstance(node, gast.ExtSlice):
         return [analyse(dim, env, non_generic) for dim in node.dims]
-    elif isinstance(node, gast.NameConstant):
-        if node.value is None:
-            return env['None']
     elif isinstance(node, gast.Subscript):
         new_type = TypeVariable()
         value_type = prune(analyse(node.value, env, non_generic))
@@ -823,8 +823,8 @@ def analyse(node, env, non_generic=None):
             return TypeVariable()  # FIXME
         elif isinstance(node.slice, gast.Index):
             # handle tuples in a special way
-            isnum = isinstance(node.slice.value, gast.Num)
-            if isnum and is_tuple_type(value_type):
+            num = isnum(node.slice.value)
+            if num and is_tuple_type(value_type):
                 try:
                     unify(prune(prune(value_type.types[0]).types[0])
                           .types[node.slice.value.n],
@@ -838,7 +838,7 @@ def analyse(node, env, non_generic=None):
                             value_type),
                         node)
         try:
-            unify(tr(MODULES['operator_']['getitem']),
+            unify(tr(MODULES['operator']['getitem']),
                   Function([value_type, slice_type], new_type))
         except InferenceError:
             raise PythranTypeError(
@@ -1037,7 +1037,7 @@ def analyse(node, env, non_generic=None):
     elif isinstance(node, gast.If):
         test_type = analyse(node.test, env, non_generic)
         unify(Function([test_type], Bool()),
-              tr(MODULES['__builtin__']['bool_']))
+              tr(MODULES['__builtin__']['bool']))
 
         body_env = env.copy()
         body_non_generic = non_generic.copy()
@@ -1104,7 +1104,7 @@ def analyse(node, env, non_generic=None):
     elif isinstance(node, gast.While):
         test_type = analyse(node.test, env, non_generic)
         unify(Function([test_type], Bool()),
-              tr(MODULES['__builtin__']['bool_']))
+              tr(MODULES['__builtin__']['bool']))
 
         analyse_body(node.body, env, non_generic)
         analyse_body(node.orelse, env, non_generic)
@@ -1141,7 +1141,7 @@ def analyse(node, env, non_generic=None):
         return MultiType([Function([Bool()], Integer()),
                           Function([Integer()], Integer())])
     elif isinstance(node, gast.Not):
-        return tr(MODULES['__builtin__']['bool_'])
+        return tr(MODULES['__builtin__']['bool'])
     elif isinstance(node, gast.BoolOp):
         op_type = analyse(node.op, env, non_generic)
         value_types = [analyse(value, env, non_generic)
@@ -1149,7 +1149,7 @@ def analyse(node, env, non_generic=None):
 
         for value_type in value_types:
             unify(Function([value_type], Bool()),
-                  tr(MODULES['__builtin__']['bool_']))
+                  tr(MODULES['__builtin__']['bool']))
 
         return_type = TypeVariable()
         prev_type = value_types[0]

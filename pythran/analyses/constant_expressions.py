@@ -45,8 +45,7 @@ class ConstantExpressions(NodeAnalysis):
         rec = all([self.visit(x) for x in (node.args + [node.func])])
         return rec and self.add(node)
 
-    visit_Num = add
-    visit_Str = add
+    visit_Constant = add
 
     def visit_Subscript(self, node):
         rec = all([self.visit(x) for x in (node.value, node.slice)])
@@ -93,9 +92,9 @@ class ConstantExpressions(NodeAnalysis):
     visit_Tuple = visit_List
     visit_Set = visit_List
 
-    def visit_Slice(self, _):
-        # ultra-conservative, indeed
-        return False
+    def visit_Slice(self, node):
+        return all([x is None or self.visit(x) for x in
+                    (node.lower, node.upper, node.step)]) and self.add(node)
 
     def visit_Index(self, node):
         return self.visit(node.value) and self.add(node)

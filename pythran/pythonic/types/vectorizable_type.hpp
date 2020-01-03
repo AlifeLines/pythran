@@ -49,6 +49,7 @@ namespace numpy
     struct fix;
     struct floor_divide;
     struct fmod;
+    struct heaviside;
     struct hypot;
     struct isfinite;
     struct isinf;
@@ -86,6 +87,8 @@ namespace scipy
       struct ivp;
       struct kvp;
       struct yvp;
+      struct spherical_jn;
+      struct spherical_yn;
     }
   }
 }
@@ -156,6 +159,7 @@ namespace types
            std::is_same<O, numpy::functor::hypot>::value ||
            std::is_same<O, numpy::functor::fmod>::value)) &&
         // special functions not in the scope of xsimd
+        !std::is_same<O, numpy::functor::heaviside>::value &&
         !std::is_same<O, scipy::special::functor::hankel1>::value &&
         !std::is_same<O, scipy::special::functor::hankel2>::value &&
         !std::is_same<O, scipy::special::functor::jv>::value &&
@@ -166,6 +170,8 @@ namespace types
         !std::is_same<O, scipy::special::functor::ivp>::value &&
         !std::is_same<O, scipy::special::functor::kvp>::value &&
         !std::is_same<O, scipy::special::functor::yvp>::value &&
+        !std::is_same<O, scipy::special::functor::spherical_jn>::value &&
+        !std::is_same<O, scipy::special::functor::spherical_yn>::value &&
         //
         true;
   };

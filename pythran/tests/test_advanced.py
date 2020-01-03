@@ -56,12 +56,28 @@ class TestAdvanced(TestEnv):
     def test_enumerate_on_generator(self):
         self.run_test("def enumerate_on_generator(n): return list(map(lambda (x,y) : x, enumerate((y for x in xrange(n) for y in xrange(x)))))", 5, enumerate_on_generator=[int])
 
+    def test_enumerate_iterate(self):
+        self.run_test("""
+                      def enumerate_iterate(n):
+                        s = 0
+                        for x in enumerate(n):
+                          for y in x:
+                            s += y
+                        return s""",
+                      [5, 6],
+                      enumerate_iterate=[List[int]])
+
     @skipIf(sys.version_info.major == 3, "None is not callable in Python3")
     def test_map_none2_on_generator(self):
         self.run_test('def map_none2_on_generator(l): return map(None,(x*x for x in l), (2*x for x in l))', [1,2,3], map_none2_on_generator=[List[int]])
 
     def test_max_interface_arity(self):
         self.run_test('def max_interface_arity({0}):pass'.format(', '.join('_'+str(i) for i in range(42))), *list(range(42)), max_interface_arity=[int]*42)
+
+    @skipIf(sys.version_info.major == 2, "kwonly args not part of py2")
+    def test_max_kwonly_key(self):
+        self.run_test('def max_kwonly_key(x): return max(x, key=lambda x:-x)',
+                      list(range(42)), max_kwonly_key=[List[int]])
 
     def test_multiple_max(self):
         self.run_test('def multiple_max(i,j,k): return max(i,j,k)', 1, 1.5, False, multiple_max=[int, float, bool])
@@ -215,6 +231,11 @@ def combiner_on_empty_list():
         with self.assertRaises(SyntaxError):
             self.run_test(code, global_redefinition=[])
 
+    def test_global_update(self):
+        code = 'foo=[]\ndef global_update(x): x.append(1)'
+        with self.assertRaises(SyntaxError):
+            self.run_test(code, global_update=[])
+
     def test_invalid_call0(self):
         code = 'def foo(x):pass\ndef invalid_call0(): return foo()'
         with self.assertRaises(SyntaxError):
@@ -229,6 +250,11 @@ def combiner_on_empty_list():
         code = 'def foo(x):pass\ndef bar():pass\ndef invalid_call2(l): return (foo if l else bar)(l)'
         with self.assertRaises(SyntaxError):
             self.run_test(code, 1, invalid_call2=[int])
+
+    def test_ellipsis(self):
+        code = 'def ellipsis_(x): return x[...,1]'
+        with self.assertRaises(SyntaxError):
+            self.run_test(code, numpy.ones((3,3)), ellipsis=[NDArray[float,:,:]])
 
     def test_multiple_lambda(self):
         code = '''
@@ -301,7 +327,6 @@ def combiner_on_empty_list():
                       numpy.arange(15),
                       builtin_slices=[NDArray[int,:]])
 
-    @skipIf(sys.platform == 'win32', "Fails on AppVeyor")
     def test_slicing_tuple(self):
         code = '''
             def testFunc():
@@ -352,7 +377,6 @@ def combiner_on_empty_list():
                 return StridedSlice(x,[0,2,3], [5,0,7], [1,1,1])'''
         self.run_test(code, numpy.arange(1000).reshape(10,10,10), static_list3=[NDArray[int, :,:,:]])
 
-    @skipIf(sys.platform == 'win32', "Fails on AppVeyor")
     def test_static_list4(self):
         code = '''
             import numpy as np

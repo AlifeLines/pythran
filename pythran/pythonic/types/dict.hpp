@@ -32,7 +32,8 @@ namespace types
   typename item_iterator_adaptator<I>::value_type item_iterator_adaptator<I>::
   operator*()
   {
-    return I::operator*();
+    auto &&tmp = I::operator*();
+    return make_tuple(tmp.first, tmp.second);
   }
 
   /// key_iterator_adaptator implementation
@@ -189,7 +190,7 @@ namespace types
   template <class K, class V>
   template <class Kp, class Vp>
   dict<K, V>::dict(dict<Kp, Vp> const &other)
-      : data(other.item_begin(), other.item_end())
+      : data(other.data->begin(), other.data->end())
   {
   }
 
@@ -358,7 +359,7 @@ namespace types
   template <class K, class V>
   dict<K, V> dict<K, V>::copy() const
   {
-    return dict<K, V>(this->item_begin(), this->item_end());
+    return dict<K, V>(this->data->begin(), this->data->end());
   }
 
   template <class K, class V>
@@ -445,15 +446,15 @@ namespace types
   }
 
   template <class K, class V>
-  std::tuple<K, V> dict<K, V>::popitem()
+  make_tuple_t<K, V> dict<K, V>::popitem()
   {
     auto b = data->begin();
     if (b == data->end())
       throw std::range_error("KeyError");
     else {
-      std::tuple<K, V> r = *b;
+      auto r = *b;
       data->erase(b);
-      return r;
+      return make_tuple_t<K, V>{r.first, r.second};
     }
   }
 
@@ -634,8 +635,12 @@ template <typename K, typename V>
 PyObject *to_python<types::dict<K, V>>::convert(types::dict<K, V> const &v)
 {
   PyObject *ret = PyDict_New();
-  for (auto kv = v.item_begin(); kv != v.item_end(); ++kv)
-    PyDict_SetItem(ret, ::to_python(kv->first), ::to_python(kv->second));
+  for (auto kv = v.item_begin(); kv != v.item_end(); ++kv) {
+    PyObject *kobj = ::to_python(kv->first), *vobj = ::to_python(kv->second);
+    PyDict_SetItem(ret, kobj, vobj);
+    Py_DECREF(kobj);
+    Py_DECREF(vobj);
+  }
   return ret;
 }
 
